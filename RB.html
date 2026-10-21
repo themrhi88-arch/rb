@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Retro Football Arcade</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: 'Press Start 2P', monospace;
+            background-color: #121212;
+            color: #fff;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        .pixel-border {
+            border: 4px solid #fff;
+            box-shadow: 4px 4px 0px #000;
+        }
+
+        .pixel-btn {
+            background-color: #2b2b36;
+            border: 4px solid #fff;
+            color: #fff;
+            padding: 10px 16px;
+            font-size: 12px;
+            cursor: pointer;
+            box-shadow: 4px 4px 0px #000;
+            transition: transform 0.05s, background-color 0.1s;
+            text-transform: uppercase;
+        }
+
+        .pixel-btn:hover {
+            background-color: #3f3f52;
+        }
+
+        .pixel-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px #000;
+        }
+
+        .pixel-btn-primary {
+            background-color: #e63946;
+            border-color: #fff;
+        }
+
+        .pixel-btn-primary:hover {
+            background-color: #ff4d5e;
+        }
+
+        .pixel-btn-success {
+            background-color: #2a9d8f;
+        }
+
+        .pixel-btn-success:hover {
+            background-color: #38b000;
+        }
+
+        .pixel-card {
+            background-color: #1e1e24;
+            border: 4px solid #3a3a4c;
+            padding: 16px;
+            border-radius: 4px;
+        }
+
+        /* Custom scrollbar for roster */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #121212;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3a3a4c;
+        }
+
+        /* Scanline effect overlay */
+        .scanlines {
+            position: relative;
+            overflow: hidden;
+        }
+        .scanlines::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+            background-size: 100% 4px;
+            z-index: 20;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        .stat-bar {
+            height: 12px;
+            background-color: #333;
+            border: 2px solid #fff;
+            display: flex;
+            gap: 2px;
+            padding: 1px;
+        }
+
+        .stat-segment {
+            flex: 1;
+            background-color: #555;
+        }
+
+        .stat-segment.active {
+            background-color: #4cc9f0;
+        }
+
+        .stat-segment.active-gold {
+            background-color: #f72585;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen bg-slate-950 scanlines">
+
+    <!-- GAME CONTAINER -->
+    <div id="app" class="relative w-full max-w-4xl h-[100vh] sm:h-[600px] bg-slate-900 pixel-border flex flex-col justify-between overflow-hidden">
+        
+        <!-- HEADER / TOP NAV -->
+        <div id="top-bar" class="bg-black text-white p-3 border-b-4 border-slate-700 flex justify-between items-center text-xs z-10">
+            <div id="header-left" class="flex items-center gap-4">
+                <span class="text-yellow-400 font-bold" id="team-display">TEAM: BOSTON</span>
+                <span class="text-emerald-400" id="record-display">REC: 0-0</span>
+            </div>
+            <div id="header-right" class="flex items-center gap-4">
+                <span class="text-sky-400" id="cc-display">CC: $100</span>
+                <span class="text-amber-500" id="cap-display">CAP: $150M</span>
+            </div>
+        </div>
+
+        <!-- MAIN VIEW AREA (Swapped dynamically) -->
+        <div id="main-content" class="relative flex-1 bg-emerald-900 overflow-hidden flex flex-col justify-center items-center">
+            
+            <!-- SCREEN: MAIN MENU -->
+            <div id="screen-main-menu" class="screen flex flex-col items-center justify-center gap-6 w-full h-full bg-slate-900 p-6 text-center">
+                <h1 class="text-3xl sm:text-5xl text-yellow-400 tracking-wider drop-shadow-[4px_4px_0_#000]">RETRO BOWL</h1>
+                <p class="text-xs text-slate-400 max-w-md leading-5">RETRO STYLE FOOTBALL MANAGEMENT & TACTICAL GAMEPLAY</p>
+                <div class="flex flex-col gap-3 w-64 mt-4">
+                    <button class="pixel-btn pixel-btn-primary py-3" onclick="game.startNewCareer()">NEW CAREER</button>
+                    <button class="pixel-btn py-3" onclick="game.showScreen('screen-roster')">ROSTER</button>
+                    <button class="pixel-btn py-3" onclick="game.showScreen('screen-office')">FRONT OFFICE</button>
+                </div>
+                <div class="text-[10px] text-slate-500 mt-6">PRESS KEYBOARD OR TOUCH CONTROLS ON FIELD</div>
+            </div>
+
+            <!-- SCREEN: FRONT OFFICE / SCHEDULE -->
+            <div id="screen-office" class="screen hidden w-full h-full bg-slate-900 p-6 flex flex-col justify-between text-xs">
+                <div class="flex justify-between items-center border-b-2 border-slate-700 pb-3">
+                    <h2 class="text-lg text-yellow-400">FRONT OFFICE</h2>
+                    <span id="week-display" class="text-emerald-400">WEEK 1</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-auto">
+                    <!-- NEXT MATCH CARD -->
+                    <div class="pixel-card flex flex-col gap-3">
+                        <div class="text-slate-400 text-[10px]">NEXT MATCHUP</div>
+                        <div class="flex items-center justify-between text-base py-2">
+                            <span id="home-team-card" class="text-yellow-400">BOSTON</span>
+                            <span class="text-slate-500">VS</span>
+                            <span id="away-team-card" class="text-rose-400">NEW YORK</span>
+                        </div>
+                        <button class="pixel-btn pixel-btn-success w-full py-3 text-sm mt-2" onclick="game.startMatch()">PLAY GAME</button>
+                    </div>
+
+                    <!-- FACILITY UPGRADES -->
+                    <div class="pixel-card flex flex-col gap-3">
+                        <div class="text-slate-400 text-[10px]">FACILITIES</div>
+                        <div class="flex justify-between items-center">
+                            <span>STADIUM (Lvl <span id="lvl-stadium">1</span>)</span>
+                            <button class="pixel-btn text-[10px] py-1 px-2" onclick="game.upgradeFacility('stadium')">$10 CC</button>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>REHAB (Lvl <span id="lvl-rehab">1</span>)</span>
+                            <button class="pixel-btn text-[10px] py-1 px-2" onclick="game.upgradeFacility('rehab')">$10 CC</button>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>TRAINING (Lvl <span id="lvl-training">1</span>)</span>
+                            <button class="pixel-btn text-[10px] py-1 px-2" onclick="game.upgradeFacility('training')">$10 CC</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between">
+                    <button class="pixel-btn" onclick="game.showScreen('screen-roster')">ROSTER</button>
+                    <button class="pixel-btn" onclick="game.showScreen('screen-main-menu')">MENU</button>
+                </div>
+            </div>
+
+            <!-- SCREEN: ROSTER MANAGEMENT -->
+            <div id="screen-roster" class="screen hidden w-full h-full bg-slate-900 p-4 sm:p-6 flex flex-col justify-between text-xs">
+                <div class="flex justify-between items-center border-b-2 border-slate-700 pb-2">
+                    <h2 class="text-lg text-yellow-400">TEAM ROSTER</h2>
+                    <span id="roster-count" class="text-slate-400">8/10 PLAYERS</span>
+                </div>
+
+                <div id="roster-list" class="flex-1 my-3 overflow-y-auto space-y-2 pr-1">
+                    <!-- Dynamically Populated -->
+                </div>
+
+                <div class="flex justify-between pt-2">
+                    <button class="pixel-btn" onclick="game.showScreen('screen-office')">BACK</button>
+                    <button class="pixel-btn pixel-btn-success" onclick="game.draftPlayer()">DRAFT AGENT ($15 CC)</button>
+                </div>
+            </div>
+
+            <!-- SCREEN: GAMEPLAY CANVAS -->
+            <div id="screen-gameplay" class="screen hidden w-full h-full relative bg-emerald-800 flex items-center justify-center">
+                <!-- CANVAS -->
+                <canvas id="gameCanvas" class="w-full h-full block bg-emerald-800"></canvas>
+
+                <!-- GAME HUD OVERLAY -->
+                <div id="game-hud" class="absolute top-2 left-2 right-2 flex justify-between items-start pointer-events-none text-[10px] sm:text-xs text-white drop-shadow-[2px_2px_0_#000]">
+                    <div class="bg-black/70 p-2 border-2 border-white rounded">
+                        <div id="hud-score" class="text-yellow-400 font-bold">BOS 0 - 0 NY</div>
+                        <div id="hud-down" class="text-slate-300">1ST & 10</div>
+                    </div>
+                    <div class="bg-black/70 p-2 border-2 border-white rounded text-right">
+                        <div id="hud-clock" class="text-emerald-400">Q1 02:30</div>
+                        <div id="hud-ball-pos" class="text-slate-300">BALL ON 20</div>
+                    </div>
+                </div>
+
+                <!-- PLAY RESULTS OVERLAY -->
+                <div id="play-overlay" class="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-3 hidden z-30">
+                    <h2 id="overlay-title" class="text-2xl text-yellow-400 font-bold drop-shadow-[3px_3px_0_#000]">TOUCHDOWN!</h2>
+                    <p id="overlay-subtitle" class="text-xs text-white">24 YARD PASS TO SMITH</p>
+                    <button class="pixel-btn pixel-btn-primary mt-4 pointer-events-auto" onclick="game.continuePlay()">CONTINUE</button>
+                </div>
+
+                <!-- TOUCH CONTROL OVERLAYS FOR MOBILE -->
+                <div id="touch-controls" class="absolute bottom-4 left-4 right-4 flex justify-between items-center pointer-events-none sm:hidden z-20">
+                    <div class="w-24 h-24 bg-white/10 rounded-full border-2 border-white/30 flex items-center justify-center pointer-events-auto active:bg-white/30" id="touch-pad">
+                        <span class="text-[10px] text-white/70">SWIPE</span>
+                    </div>
+                    <button id="touch-action-btn" class="pixel-btn pixel-btn-primary w-20 h-20 rounded-full flex items-center justify-center text-[10px] pointer-events-auto" onclick="game.handleTouchAction()">
+                        DIVE/JUKE
+                    </button>
+                </div>
+            </div>
+
+            <!-- SCREEN: GAME OVER / RESULT -->
+            <div id="screen-game-over" class="screen hidden w-full h-full bg-slate-900 p-6 flex flex-col items-center justify-center gap-4 text-center">
+                <h2 id="game-over-title" class="text-3xl text-yellow-400">FINAL SCORE</h2>
+                <div id="game-over-score" class="text-xl text-white my-2">BOS 24 - 17 NY</div>
+                <p id="game-over-reward" class="text-xs text-emerald-400">+10 COACH CREDITS EARNED</p>
+                <button class="pixel-btn pixel-btn-primary mt-6 px-8 py-3" onclick="game.finishMatch()">CONTINUE</button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- AUDIO SYNTHESIZER (Web Audio API) -->
+    <script>
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playWhistle() {
+                this.init();
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(2400, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1800, this.ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
+
+            playCatch() {
+                this.init();
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+
+            playCheer() {
+                this.init();
+                if (!this.ctx) return;
+                // Noise buffer generator for crowd cheer effect
+                const bufferSize = this.ctx.sampleRate * 0.5;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 1000;
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start();
+            }
+
+            playTackle() {
+                this.init();
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(80, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(20, this.ctx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.2);
+            }
+        }
+
+        const audio = new SoundFX();
+    </script>
+
+    <!-- MAIN GAME LOGIC & ENGINE -->
+    <script>
+        // CONFIG & CONSTANTS
+        const FIELD_WIDTH = 1200; // Total yardage visual representation
+        const FIELD_HEIGHT = 500;
+        const TOUCHDOWN_YARDS_LEFT = 10;
+        const TOUCHDOWN_YARDS_RIGHT = 110;
+
+        const POSITIONS = ['QB', 'RB', 'WR1', 'WR2', 'TE', 'OL', 'DL', 'LB', 'CB', 'S'];
+        const FIRST_NAMES = ['Tom', 'Patrick', 'Aaron', 'Lamar', 'Tyreek', 'Travis', 'Cooper', 'Derrick', 'Nick', 'Micah', 'Justin', 'Josh'];
+        const LAST_NAMES = ['Brady', 'Mahomes', 'Rodgers', 'Jackson', 'Hill', 'Kelce', 'Kupp', 'Henry', 'Bosa', 'Parsons', 'Jefferson', 'Allen'];
+
+        class GameEngine {
+            constructor() {
+                // Team state
+                this.teamName = 'BOSTON';
+                this.credits = 50;
+                this.salaryCap = 150;
+                this.wins = 0;
+                this.losses = 0;
+                this.week = 1;
+
+                this.facilities = {
+                    stadium: 1,
+                    rehab: 1,
+                    training: 1
+                };
+
+                // Roster
+                this.roster = [];
+                this.generateInitialRoster();
+
+                // Gameplay simulation state
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.resizeCanvas();
+
+                window.addEventListener('resize', () => this.resizeCanvas());
+
+                // Match parameters
+                this.inMatch = false;
+                this.quarter = 1;
+                this.clock = 150; // seconds per quarter
+                this.homeScore = 0;
+                this.awayScore = 0;
+                this.down = 1;
+                this.yardsToGo = 10;
+                this.ballYard = 20; // 0-100 scale between endzones
+                this.possession = 'HOME'; // 'HOME' or 'AWAY'
+
+                // Onfield entities
+                this.players = [];
+                this.qb = null;
+                this.ball = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, air: false, targetX: 0, targetY: 0, carrier: null };
+                
+                // Input handling
+                this.mouse = { x: 0, y: 0, down: false, dragStartX: 0, dragStartY: 0 };
+                this.keys = {};
+                this.playState = 'PRE_SNAP'; // PRE_SNAP, PASSING, RUNNING, PLAY_ENDED
+
+                this.setupInputs();
+                this.updateUI();
+            }
+
+            resizeCanvas() {
+                if (!this.canvas) return;
+                const rect = this.canvas.getBoundingClientRect();
+                this.canvas.width = rect.width;
+                this.canvas.height = rect.height;
+            }
+
+            generateInitialRoster() {
+                const positions = ['QB', 'RB', 'WR1', 'WR2', 'TE', 'DL', 'LB', 'CB'];
+                this.roster = positions.map((pos, idx) => ({
+                    id: idx + 1,
+                    name: `${FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]} ${LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)]}`,
+                    pos: pos,
+                    speed: Math.floor(Math.random() * 5) + 5,
+                    power: Math.floor(Math.random() * 5) + 5,
+                    stamina: Math.floor(Math.random() * 5) + 5,
+                    skill: Math.floor(Math.random() * 5) + 5,
+                    morale: 80,
+                    value: Math.floor(Math.random() * 8) + 8
+                }));
+            }
+
+            showScreen(screenId) {
+                document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+                const target = document.getElementById(screenId);
+                if (target) target.classList.remove('hidden');
+
+                if (screenId === 'screen-roster') this.renderRoster();
+                if (screenId === 'screen-office') this.renderOffice();
+            }
+
+            updateUI() {
+                document.getElementById('team-display').innerText = `TEAM: ${this.teamName}`;
+                document.getElementById('record-display').innerText = `REC: ${this.wins}-${this.losses}`;
+                document.getElementById('cc-display').innerText = `CC: $${this.credits}`;
+                document.getElementById('cap-display').innerText = `CAP: $${this.salaryCap}M`;
+            }
+
+            renderOffice() {
+                this.updateUI();
+                document.getElementById('week-display').innerText = `WEEK ${this.week}`;
+                document.getElementById('lvl-stadium').innerText = this.facilities.stadium;
+                document.getElementById('lvl-rehab').innerText = this.facilities.rehab;
+                document.getElementById('lvl-training').innerText = this.facilities.training;
+            }
+
+            renderRoster() {
+                const list = document.getElementById('roster-list');
+                list.innerHTML = '';
+
+                this.roster.forEach(player => {
+                    const el = document.createElement('div');
+                    el.className = 'pixel-card flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 p-3';
+                    
+                    const renderBar = (val) => {
+                        let html = '<div class="stat-bar w-24">';
+                        for (let i = 0; i < 10; i++) {
+                            html += `<div class="stat-segment ${i < val ? 'active' : ''}"></div>`;
+                        }
+                        html += '</div>';
+                        return html;
+                    };
+
+                    el.innerHTML = `
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="bg-yellow-500 text-black font-bold px-1 rounded text-[10px]">${player.pos}</span>
+                                <span class="text-white font-bold text-xs">${player.name}</span>
+                            </div>
+                            <div class="text-[9px] text-slate-400 mt-1">MORALE: ${player.morale}% | VAL: $${player.value}M</div>
+                        </div>
+                        <div class="flex flex-wrap gap-2 text-[9px] items-center">
+                            <div>SPD ${renderBar(player.speed)}</div>
+                            <div>PWR ${renderBar(player.power)}</div>
+                            <div>SKL ${renderBar(player.skill)}</div>
+                            <button class="pixel-btn pixel-btn-primary text-[8px] py-1 px-2" onclick="game.upgradePlayer(${player.id})">UPGRADE ($5 CC)</button>
+                        </div>
+                    `;
+                    list.appendChild(el);
+                });
+
+                document.getElementById('roster-count').innerText = `${this.roster.length}/10 PLAYERS`;
+            }
+
+            upgradePlayer(id) {
+                if (this.credits < 5) return;
+                const player = this.roster.find(p => p.id === id);
+                if (!player) return;
+
+                if (player.speed < 10) { player.speed++; this.credits -= 5; }
+                else if (player.power < 10) { player.power++; this.credits -= 5; }
+                else if (player.skill < 10) { player.skill++; this.credits -= 5; }
+
+                this.updateUI();
+                this.renderRoster();
+            }
+
+            upgradeFacility(type) {
+                if (this.credits >= 10 && this.facilities[type] < 5) {
+                    this.credits -= 10;
+                    this.facilities[type]++;
+                    this.renderOffice();
+                }
+            }
+
+            draftPlayer() {
+                if (this.credits < 15 || this.roster.length >= 10) return;
+                const pos = POSITIONS[Math.floor(Math.random() * POSITIONS.length)];
+                const newPlayer = {
+                    id: Date.now(),
+                    name: `${FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]} ${LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)]}`,
+                    pos: pos,
+                    speed: Math.floor(Math.random() * 4) + 6,
+                    power: Math.floor(Math.random() * 4) + 6,
+                    stamina: Math.floor(Math.random() * 4) + 6,
+                    skill: Math.floor(Math.random() * 4) + 6,
+                    morale: 90,
+                    value: Math.floor(Math.random() * 5) + 10
+                };
+                this.credits -= 15;
+                this.roster.push(newPlayer);
+                this.renderRoster();
+            }
+
+            startNewCareer() {
+                this.wins = 0;
+                this.losses = 0;
+                this.week = 1;
+                this.credits = 30;
+                this.generateInitialRoster();
+                this.showScreen('screen-office');
+            }
+
+            // GAMEPLAY MATCH LOGIC
+            startMatch() {
+                this.inMatch = true;
+                this.quarter = 1;
+                this.clock = 150;
+                this.homeScore = 0;
+                this.awayScore = 0;
+                this.ballYard = 20;
+                this.down = 1;
+                this.yardsToGo = 10;
+                this.possession = 'HOME';
+
+                this.showScreen('screen-gameplay');
+                this.setupFieldPlay();
+                this.lastTime = performance.now();
+                requestAnimationFrame((t) => this.gameLoop(t));
+                audio.playWhistle();
+            }
+
+            setupFieldPlay() {
+                this.playState = 'PRE_SNAP';
+                this.players = [];
+
+                // Convert yardage (0-100) to Canvas Coordinates
+                const startX = this.yardToCanvasX(this.ballYard);
+                const fieldCenterY = this.canvas.height / 2;
+
+                // OFFENSE (Player controlled team - Blue)
+                this.qb = { x: startX - 40, y: fieldCenterY, vx: 0, vy: 0, role: 'QB', team: 'HOME', speed: 3.5, hasBall: true, radius: 10, color: '#3a86ef' };
+                const rb = { x: startX - 80, y: fieldCenterY + 20, vx: 0, vy: 0, role: 'RB', team: 'HOME', speed: 4.2, hasBall: false, radius: 10, color: '#3a86ef', routeY: fieldCenterY + 20 };
+                const wr1 = { x: startX - 10, y: fieldCenterY - 120, vx: 0, vy: 0, role: 'WR', team: 'HOME', speed: 4.8, hasBall: false, radius: 10, color: '#3a86ef', routeY: fieldCenterY - 120 };
+                const wr2 = { x: startX - 10, y: fieldCenterY + 120, vx: 0, vy: 0, role: 'WR', team: 'HOME', speed: 4.6, hasBall: false, radius: 10, color: '#3a86ef', routeY: fieldCenterY + 120 };
+                const ol1 = { x: startX - 10, y: fieldCenterY - 30, vx: 0, vy: 0, role: 'OL', team: 'HOME', speed: 2.0, hasBall: false, radius: 11, color: '#2a6fdb' };
+                const ol2 = { x: startX - 10, y: fieldCenterY + 30, vx: 0, vy: 0, role: 'OL', team: 'HOME', speed: 2.0, hasBall: false, radius: 11, color: '#2a6fdb' };
+
+                // DEFENSE (AI team - Red)
+                const dl1 = { x: startX + 20, y: fieldCenterY - 20, vx: 0, vy: 0, role: 'DL', team: 'AWAY', speed: 3.0, radius: 11, color: '#e63946' };
+                const dl2 = { x: startX + 20, y: fieldCenterY + 20, vx: 0, vy: 0, role: 'DL', team: 'AWAY', speed: 3.0, radius: 11, color: '#e63946' };
+                const lb = { x: startX + 80, y: fieldCenterY, vx: 0, vy: 0, role: 'LB', team: 'AWAY', speed: 3.8, radius: 10, color: '#d62828' };
+                const cb1 = { x: startX + 60, y: fieldCenterY - 120, vx: 0, vy: 0, role: 'CB', team: 'AWAY', speed: 4.5, radius: 10, color: '#d62828' };
+                const cb2 = { x: startX + 60, y: fieldCenterY + 120, vx: 0, vy: 0, role: 'CB', team: 'AWAY', speed: 4.4, radius: 10, color: '#d62828' };
+                const saf = { x: startX + 160, y: fieldCenterY, vx: 0, vy: 0, role: 'S', team: 'AWAY', speed: 4.6, radius: 10, color: '#000000' };
+
+                this.players = [this.qb, rb, wr1, wr2, ol1, ol2, dl1, dl2, lb, cb1, cb2, saf];
+
+                // BALL INITIAL STATE
+                this.ball = {
+                    x: this.qb.x,
+                    y: this.qb.y,
+                    z: 0,
+                    vx: 0,
+                    vy: 0,
+                    vz: 0,
+                    air: false,
+                    carrier: this.qb
+                };
+
+                this.updateHUD();
+            }
+
+            yardToCanvasX(yard) {
+                // 0 yard = left endzone start, 100 yard = right endzone start
+                const margin = 80; // endzone width
+                const playableWidth = this.canvas.width - (margin * 2);
+                return margin + (yard / 100) * playableWidth;
+            }
+
+            canvasXToYard(x) {
+                const margin = 80;
+                const playableWidth = this.canvas.width - (margin * 2);
+                return Math.round(((x - margin) / playableWidth) * 100);
+            }
+
+            setupInputs() {
+                window.addEventListener('keydown', (e) => this.keys[e.key] = true);
+                window.addEventListener('keyup', (e) => this.keys[e.key] = false);
+
+                const getCanvasCoords = (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    return {
+                        x: e.clientX - rect.left,
+                        y: e.clientY - rect.top
+                    };
+                };
+
+                this.canvas.addEventListener('mousedown', (e) => {
+                    const pos = getCanvasCoords(e);
+                    this.mouse.down = true;
+                    this.mouse.dragStartX = pos.x;
+                    this.mouse.dragStartY = pos.y;
+                    this.mouse.x = pos.x;
+                    this.mouse.y = pos.y;
+
+                    if (this.playState === 'PRE_SNAP') {
+                        this.snapBall();
+                    }
+                });
+
+                this.canvas.addEventListener('mousemove', (e) => {
+                    const pos = getCanvasCoords(e);
+                    this.mouse.x = pos.x;
+                    this.mouse.y = pos.y;
+                });
+
+                this.canvas.addEventListener('mouseup', () => {
+                    if (this.mouse.down && this.playState === 'PASSING' && this.ball.carrier === this.qb) {
+                        this.throwBall();
+                    }
+                    this.mouse.down = false;
+                });
+
+                // Touch Events for Mobile support
+                this.canvas.addEventListener('touchstart', (e) => {
+                    if (e.touches.length > 0) {
+                        const touch = e.touches[0];
+                        const rect = this.canvas.getBoundingClientRect();
+                        this.mouse.down = true;
+                        this.mouse.dragStartX = touch.clientX - rect.left;
+                        this.mouse.dragStartY = touch.clientY - rect.top;
+                        this.mouse.x = this.mouse.dragStartX;
+                        this.mouse.y = this.mouse.dragStartY;
+
+                        if (this.playState === 'PRE_SNAP') {
+                            this.snapBall();
+                        }
+                    }
+                });
+
+                this.canvas.addEventListener('touchmove', (e) => {
+                    if (e.touches.length > 0) {
+                        const touch = e.touches[0];
+                        const rect = this.canvas.getBoundingClientRect();
+                        this.mouse.x = touch.clientX - rect.left;
+                        this.mouse.y = touch.clientY - rect.top;
+                    }
+                });
+
+                this.canvas.addEventListener('touchend', () => {
+                    if (this.mouse.down && this.playState === 'PASSING' && this.ball.carrier === this.qb) {
+                        this.throwBall();
+                    }
+                    this.mouse.down = false;
+                });
+            }
+
+            snapBall() {
+                if (this.playState !== 'PRE_SNAP') return;
+                this.playState = 'PASSING';
+                audio.playWhistle();
+            }
+
+            throwBall() {
+                // Calculate passing trajectory based on backward drag (slingshot mechanics)
+                const dx = this.mouse.dragStartX - this.mouse.x;
+                const dy = this.mouse.dragStartY - this.mouse.y;
+
+                const power = Math.min(Math.hypot(dx, dy) * 0.12, 12);
+                const angle = Math.atan2(dy, dx);
+
+                this.ball.carrier = null;
+                this.ball.air = true;
+                this.ball.vx = Math.cos(angle) * power;
+                this.ball.vy = Math.sin(angle) * power;
+                this.ball.vz = 8; // Arc height
+                this.playState = 'RUNNING';
+            }
+
+            handleTouchAction() {
+                if (this.playState === 'PRE_SNAP') {
+                    this.snapBall();
+                } else if (this.playState === 'RUNNING' && this.ball.carrier) {
+                    // Dive / Juke boost
+                    this.ball.carrier.vx += 3;
+                }
+            }
+
+            gameLoop(timestamp) {
+                if (!this.inMatch) return;
+
+                const dt = (timestamp - this.lastTime) / 1000;
+                this.lastTime = timestamp;
+
+                this.update(dt);
+                this.render();
+
+                requestAnimationFrame((t) => this.gameLoop(t));
+            }
+
+            update(dt) {
+                // Clock countdown during active play
+                if (this.playState === 'PASSING' || this.playState === 'RUNNING') {
+                    this.clock -= dt;
+                    if (this.clock <= 0) {
+                        this.clock = 0;
+                        this.advanceQuarter();
+                    }
+                    this.updateHUD();
+                }
+
+                // Player Movement Mechanics
+                if (this.playState === 'PASSING' || this.playState === 'RUNNING') {
+                    this.players.forEach(p => {
+                        if (p.team === 'HOME') {
+                            if (p.role === 'WR' || p.role === 'RB') {
+                                // Routes downfield
+                                p.x += p.speed * 0.8;
+                                if (p.role === 'WR') {
+                                    if (p.y < this.canvas.height / 2) p.y += 0.2;
+                                    else p.y -= 0.2;
+                                }
+                            } else if (p.role === 'QB' && p.hasBall) {
+                                // Dropback / Pocket movement via keyboard
+                                if (this.keys['ArrowUp'] || this.keys['w']) p.y -= p.speed * 0.5;
+                                if (this.keys['ArrowDown'] || this.keys['s']) p.y += p.speed * 0.5;
+                                if (this.keys['ArrowLeft'] || this.keys['a']) p.x -= p.speed * 0.5;
+                                if (this.keys['ArrowRight'] || this.keys['d']) p.x += p.speed * 0.5;
+                            } else if (this.ball.carrier === p) {
+                                // User Control Receiver / Runner
+                                let moveY = 0;
+                                let moveX = p.speed;
+
+                                if (this.keys['ArrowUp'] || this.keys['w']) moveY = -p.speed;
+                                if (this.keys['ArrowDown'] || this.keys['s']) moveY = p.speed;
+                                if (this.keys['ArrowLeft'] || this.keys['a']) moveX = -p.speed * 0.5;
+                                if (this.keys['ArrowRight'] || this.keys['d']) moveX = p.speed * 1.2;
+
+                                p.x += moveX;
+                                p.y += moveY;
+                            }
+                        } else if (p.team === 'AWAY') {
+                            // AI Defense - Chases Ball or Ball Carrier
+                            const target = this.ball.carrier ? this.ball.carrier : this.ball;
+                            const dx = target.x - p.x;
+                            const dy = target.y - p.y;
+                            const dist = Math.hypot(dx, dy);
+
+                            if (dist > 5) {
+                                p.x += (dx / dist) * (p.speed * 0.65);
+                                p.y += (dy / dist) * (p.speed * 0.65);
+                            }
+
+                            // Tackle Collision
+                            if (this.ball.carrier && this.ball.carrier.team === 'HOME') {
+                                if (dist < (p.radius + this.ball.carrier.radius)) {
+                                    this.tackle(p);
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Ball Movement Mechanics
+                if (this.ball.air) {
+                    this.ball.x += this.ball.vx;
+                    this.ball.y += this.ball.vy;
+                    this.ball.z += this.ball.vz;
+                    this.ball.vz -= 0.4; // Gravity effect
+
+                    // Ball Catching Check
+                    if (this.ball.z <= 0) {
+                        this.ball.z = 0;
+                        this.ball.air = false;
+
+                        // Check nearest receiver to catch
+                        let nearestPlayer = null;
+                        let minDist = 35;
+
+                        this.players.forEach(p => {
+                            const d = Math.hypot(p.x - this.ball.x, p.y - this.ball.y);
+                            if (d < minDist) {
+                                minDist = d;
+                                nearestPlayer = p;
+                            }
+                        });
+
+                        if (nearestPlayer) {
+                            this.ball.carrier = nearestPlayer;
+                            nearestPlayer.hasBall = true;
+                            if (this.qb) this.qb.hasBall = false;
+                            audio.playCatch();
+                        } else {
+                            // Incomplete pass
+                            this.endPlay(false, 'INCOMPLETE PASS');
+                        }
+                    }
+                } else if (this.ball.carrier) {
+                    this.ball.x = this.ball.carrier.x;
+                    this.ball.y = this.ball.carrier.y;
+
+                    // Touchdown Check
+                    const rightEndzoneX = this.yardToCanvasX(100);
+                    if (this.ball.x >= rightEndzoneX) {
+                        this.scoreTouchdown();
+                    }
+                }
+            }
+
+            tackle(tackler) {
+                audio.playTackle();
+                const yardsGained = this.canvasXToYard(this.ball.x) - this.ballYard;
+                this.endPlay(true, `TACKLED FOR ${yardsGained >= 0 ? '+' : ''}${yardsGained} YDS`);
+            }
+
+            scoreTouchdown() {
+                audio.playCheer();
+                this.homeScore += 6; // TD
+                this.homeScore += 1; // Auto Extra Point for simplicity
+                this.endPlay(false, 'TOUCHDOWN!', true);
+            }
+
+            endPlay(advanceYardage, title, isTD = false) {
+                this.playState = 'PLAY_ENDED';
+                const endYard = this.canvasXToYard(this.ball.x);
+
+                if (isTD) {
+                    this.ballYard = 20; // Reset after TD
+                    this.down = 1;
+                    this.yardsToGo = 10;
+                } else if (advanceYardage) {
+                    const gained = endYard - this.ballYard;
+                    this.ballYard = Math.min(Math.max(endYard, 1), 99);
+                    this.yardsToGo -= gained;
+
+                    if (this.yardsToGo <= 0) {
+                        this.down = 1;
+                        this.yardsToGo = 10;
+                    } else {
+                        this.down++;
+                        if (this.down > 4) {
+                            // Turnover on downs
+                            this.ballYard = 100 - this.ballYard; // Flip field
+                            this.down = 1;
+                            this.yardsToGo = 10;
+                            title = 'TURNOVER ON DOWNS!';
+                        }
+                    }
+                } else { // Incomplete Pass
+                    this.down++;
+                    if (this.down > 4) {
+                        this.ballYard = 100 - this.ballYard;
+                        this.down = 1;
+                        this.yardsToGo = 10;
+                        title = 'TURNOVER ON DOWNS!';
+                    }
+                }
+
+                this.showOverlay(title, `BALL ON ${this.ballYard} YARD LINE`);
+            }
+
+            showOverlay(title, subtitle) {
+                document.getElementById('overlay-title').innerText = title;
+                document.getElementById('overlay-subtitle').innerText = subtitle;
+                document.getElementById('play-overlay').classList.remove('hidden');
+            }
+
+            continuePlay() {
+                document.getElementById('play-overlay').classList.add('hidden');
+                if (this.clock <= 0) {
+                    this.finishMatch();
+                } else {
+                    this.setupFieldPlay();
+                }
+            }
+
+            advanceQuarter() {
+                this.quarter++;
+                if (this.quarter > 4) {
+                    this.endMatch();
+                } else {
+                    this.clock = 150;
+                }
+            }
+
+            endMatch() {
+                this.inMatch = false;
+                // AI opponent random score generation
+                this.awayScore = Math.floor(Math.random() * 21) + 7;
+
+                if (this.homeScore > this.awayScore) {
+                    this.wins++;
+                    this.credits += 10;
+                    document.getElementById('game-over-title').innerText = 'VICTORY!';
+                    document.getElementById('game-over-reward').innerText = '+10 COACH CREDITS EARNED';
+                } else {
+                    this.losses++;
+                    this.credits += 3;
+                    document.getElementById('game-over-title').innerText = 'DEFEAT';
+                    document.getElementById('game-over-reward').innerText = '+3 COACH CREDITS EARNED';
+                }
+
+                document.getElementById('game-over-score').innerText = `${this.teamName} ${this.homeScore} - ${this.awayScore} OPP`;
+                this.showScreen('screen-game-over');
+            }
+
+            finishMatch() {
+                this.week++;
+                this.showScreen('screen-office');
+            }
+
+            updateHUD() {
+                const mins = Math.floor(this.clock / 60);
+                const secs = Math.floor(this.clock % 60).toString().padStart(2, '0');
+
+                document.getElementById('hud-score').innerText = `${this.teamName} ${this.homeScore} - ${this.awayScore} OPP`;
+                document.getElementById('hud-down').innerText = `${this.getOrdinal(this.down)} & ${this.yardsToGo > 0 ? this.yardsToGo : 'GOAL'}`;
+                document.getElementById('hud-clock').innerText = `Q${this.quarter} ${mins}:${secs}`;
+                document.getElementById('hud-ball-pos').innerText = `BALL ON ${this.ballYard}`;
+            }
+
+            getOrdinal(n) {
+                return n === 1 ? '1ST' : n === 2 ? '2ND' : n === 3 ? '3RD' : '4TH';
+            }
+
+            // RENDERING ENGINE (PIXEL CANVAS)
+            render() {
+                const ctx = this.ctx;
+                const width = this.canvas.width;
+                const height = this.canvas.height;
+
+                // Field Background
+                ctx.fillStyle = '#2d6a4f';
+                ctx.fillRect(0, 0, width, height);
+
+                // Alternating grass stripes (every 10 yards)
+                const margin = 80;
+                const playableWidth = width - (margin * 2);
+                const yardWidth = playableWidth / 100;
+
+                ctx.fillStyle = '#40916c';
+                for (let i = 0; i < 100; i += 20) {
+                    const x = margin + (i * yardWidth);
+                    ctx.fillRect(x, 0, yardWidth * 10, height);
+                }
+
+                // Endzones
+                ctx.fillStyle = '#1b4332';
+                ctx.fillRect(0, 0, margin, height); // Left EZ
+                ctx.fillRect(width - margin, 0, margin, height); // Right EZ
+
+                // Endzone Text
+                ctx.save();
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 16px "Press Start 2P"';
+                ctx.textAlign = 'center';
+                ctx.translate(margin / 2, height / 2);
+                ctx.rotate(-Math.PI / 2);
+                ctx.fillText("ENDZONE", 0, 0);
+                ctx.restore();
+
+                ctx.save();
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 16px "Press Start 2P"';
+                ctx.textAlign = 'center';
+                ctx.translate(width - margin / 2, height / 2);
+                ctx.rotate(Math.PI / 2);
+                ctx.fillText("RIVAL", 0, 0);
+                ctx.restore();
+
+                // Field Yard Lines
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                for (let i = 0; i <= 100; i += 10) {
+                    const x = margin + (i * yardWidth);
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, height);
+                    ctx.stroke();
+
+                    // Yard numbers
+                    if (i > 0 && i < 100 && i % 20 === 0) {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = '10px "Press Start 2P"';
+                        ctx.textAlign = 'center';
+                        const num = i > 50 ? 100 - i : i;
+                        ctx.fillText(num.toString(), x, 25);
+                        ctx.fillText(num.toString(), x, height - 15);
+                    }
+                }
+
+                // First Down Marker Line (Yellow)
+                const firstDownYard = Math.min(this.ballYard + this.yardsToGo, 100);
+                const fdX = margin + (firstDownYard * yardWidth);
+                ctx.strokeStyle = '#ffb703';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(fdX, 0);
+                ctx.lineTo(fdX, height);
+                ctx.stroke();
+
+                // Passing Target Arc / Slingshot Visualizer
+                if (this.playState === 'PASSING' && this.mouse.down && this.ball.carrier === this.qb) {
+                    const dx = this.mouse.dragStartX - this.mouse.x;
+                    const dy = this.mouse.dragStartY - this.mouse.y;
+
+                    ctx.strokeStyle = '#ffb703';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([6, 6]);
+                    ctx.beginPath();
+                    ctx.moveTo(this.qb.x, this.qb.y);
+                    ctx.lineTo(this.qb.x + dx * 2, this.qb.y + dy * 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    // Target Reticle
+                    ctx.strokeStyle = '#e63946';
+                    ctx.beginPath();
+                    ctx.arc(this.qb.x + dx * 2, this.qb.y + dy * 2, 12, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                // Render Players (Pixel-art Circles with Helmets)
+                this.players.forEach(p => {
+                    // Player Shadow
+                    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                    ctx.beginPath();
+                    ctx.ellipse(p.x, p.y + p.radius - 2, p.radius, p.radius / 2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Player Body
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Helmet
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(p.x + (p.team === 'HOME' ? 3 : -3), p.y - 2, p.radius / 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Selection Ring for Controlled Ball Carrier
+                    if (this.ball.carrier === p) {
+                        ctx.strokeStyle = '#ffff00';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.radius + 4, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                });
+
+                // Render Football
+                const ballScale = 1 + (this.ball.z / 20); // Elevation scaling
+                const ballY = this.ball.y - this.ball.z * 2;
+
+                // Ball Shadow
+                if (this.ball.z > 0) {
+                    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                    ctx.beginPath();
+                    ctx.ellipse(this.ball.x, this.ball.y, 6, 3, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Football Body
+                ctx.fillStyle = '#7f4f24';
+                ctx.beginPath();
+                ctx.ellipse(this.ball.x, ballY, 7 * ballScale, 4 * ballScale, Math.PI / 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Football Laces
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(this.ball.x - 2, ballY);
+                ctx.lineTo(this.ball.x + 2, ballY);
+                ctx.stroke();
+            }
+        }
+
+        // INITIALIZE ENGINE ON WINDOW LOAD
+        let game;
+        window.onload = () => {
+            game = new GameEngine();
+        };
+    </script>
+</body>
+</html>
